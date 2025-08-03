@@ -58,6 +58,7 @@ class ThebenConexaClient:
                 auth=self._get_auth(),
                 timeout=10,
                 json={"method": "user-info"},
+                follow_redirects=True,
             )
             self.logger.debug(
                 f"Got user info: \nStatus code: {response.status_code}\nRaw response: {response.text}"
@@ -112,6 +113,7 @@ class ThebenConexaClient:
                         "usage-point-id": id,
                         "last-reading": "true",
                     },
+                    follow_redirects=True,
                 )
                 self.logger.debug(
                     f"Got readings for usage point id '{id}': \nStatus code: {response.status_code}\nRaw response: {response.text}"
@@ -158,6 +160,7 @@ class ThebenConexaClient:
                 timeout=10,
                 # TODO: Requires setting the header "X-Content-Length" manually (equals body length)
                 json={"method": "smgw-info"},
+                follow_redirects=True,
             )
 
             self.logger.debug(
