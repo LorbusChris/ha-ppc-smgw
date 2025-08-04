@@ -1,10 +1,6 @@
 import httpx
-
-from custom_components.ppc_smgw.const import (
-    THEBEN_DEFAULT_NAME,
-    THEBEN_MANUFACTURER,
-    THEBEN_DEFAULT_MODEL,
-)
+import json
+from custom_components.ppc_smgw.const import THEBEN_DEFAULT_NAME, THEBEN_MANUFACTURER, THEBEN_DEFAULT_MODEL
 from custom_components.ppc_smgw.gateways.reading import Information, OBISCode, Reading
 from datetime import datetime, timezone
 
@@ -52,20 +48,32 @@ class ThebenConexaClient:
     async def _get_usage_point_ids(self) -> list[str]:
         self.logger.debug(f"Getting user info from {self.base_url}")
 
-        try:
-            response = await self.httpx_client.post(
-                self.base_url,
-                auth=self._get_auth(),
-                timeout=10,
-                json={"method": "user-info"},
-            )
-            self.logger.debug(
-                f"Got user info: \nStatus code: {response.status_code}\nRaw response: {response.text}"
-            )
-            usage_json = response.json()
-        except Exception as e:
-            self.logger.error(f"Failed to fetch usage point ID: {e}")
+        body = {"method": "user-info"}
+        json_body = json.dumps(body)
+        body_size = len(json_body.encode('utf-8'))
+        headers = {
+            'X-Content-Length': str(body_size),
+            'Content-Length': str(body_size)
+        }
+        self.httpx_client.headers.update(headers)
+
+        response = await self.httpx_client.post(
+            self.base_url,
+            auth=self._get_auth(),
+            timeout=20,
+            content=json_body.encode('utf-8'),
+            follow_redirects=True,
+        )
+
+        self.logger.debug(
+            f"Got user info: \nStatus code: {response.status_code}\nRaw response: {response.text}"
+        )
+
+        if response.status_code != 200:
+            self.logger.error(f"Failed to fetch usage point ID")
             return ""
+
+        usage_json = response.json()
 
         usage_points_json = usage_json["user-info"]["usage-points"]
         self.logger.debug(f"Received {len(usage_points_json)} usage points.")
@@ -101,24 +109,36 @@ class ThebenConexaClient:
         readings: dict[OBISCode, Reading] = {}
 
         for id in usage_point_ids:
-            try:
-                response = await self.httpx_client.post(
-                    self.base_url,
-                    auth=self._get_auth(),
-                    timeout=10,
-                    json={
-                        "method": "readings",
-                        "database": "origin",
-                        "usage-point-id": id,
-                        "last-reading": "true",
-                    },
-                )
-                self.logger.debug(
-                    f"Got readings for usage point id '{id}': \nStatus code: {response.status_code}\nRaw response: {response.text}"
-                )
-                res_json = response.json()
-            except Exception as e:
-                self.logger.error(f"Failed to fetch reading: {e}")
+            body = {
+                "method": "readings",
+                "database": "origin",
+                "usage-point-id": id,
+                "last-reading": "true",
+            }
+            json_body = json.dumps(body)
+            body_size = len(json_body.encode('utf-8'))
+            headers = {
+                'X-Content-Length': str(body_size),
+                'Content-Length': str(body_size)
+            }
+            self.httpx_client.headers.update(headers)
+
+            response = await self.httpx_client.post(
+                self.base_url,
+                auth=self._get_auth(),
+                timeout=20,
+                content=json_body.encode('utf-8'),
+            )
+
+            self.logger.debug(
+                f"Got readings for usage point id '{id}': \nStatus code: {response.status_code}\nRaw response: {response.text}"
+            )
+
+            if response.status_code != 200:
+                self.logger.error(f"Failed to fetch reading for usage point ID: {id}")
+                continue
+
+            res_json = response.json()
 
             for channel in res_json["readings"]["channels"]:
                 ch_readings = channel["readings"]
@@ -151,23 +171,32 @@ class ThebenConexaClient:
     async def _get_firmware_version(self) -> str:
         self.logger.debug(f"Getting firmware version from {self.base_url}")
 
-        try:
-            response = await self.httpx_client.post(
-                self.base_url,
-                auth=self._get_auth(),
-                timeout=10,
-                # TODO: Requires setting the header "X-Content-Length" manually (equals body length)
-                json={"method": "smgw-info"},
-            )
+        body = {"method": "smgw-info"}
+        json_body = json.dumps(body)
+        body_size = len(json_body.encode('utf-8'))
+        headers = {
+            'X-Content-Length': str(body_size),
+            'Content-Length': str(body_size)
+        }
+        self.httpx_client.headers.update(headers)
 
-            self.logger.debug(
-                f"Got firmware info response: \nStatus code: {response.status_code}\nRaw response: {response.text}"
-            )
+        response = await self.httpx_client.post(
+            self.base_url,
+            auth=self._get_auth(),
+            timeout=20,
+            content=json_body.encode('utf-8'),
+            follow_redirects=True,
+        )
 
-            smgw_info = response.json()
-        except Exception as e:
-            self.logger.error(f"Failed to fetch firmware version: {e}")
+        self.logger.debug(
+            f"Got firmware info response: \nStatus code: {response.status_code}\nRaw response: {response.text}"
+        )
+
+        if response.status_code != 200:
+            self.logger.error(f"Failed to fetch firmware version")
             return "Unknown"
+
+        smgw_info = response.json()
 
         try:
             fw_version = smgw_info["smgw-info"]["firmware-info"]["version"]

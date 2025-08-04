@@ -209,7 +209,9 @@ class PPCSMGWLocalOptionsFlowHandler(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=data_schema,
+            data_schema=self.add_suggested_values_to_schema(
+                data_schema, self.options
+            )
         )
 
     def _update_options(self):

@@ -21,7 +21,7 @@ PPC_URL = "https://192.168.1.200/cgi-bin/hanservice.cgi"
 THEBEN_DEFAULT_NAME = "Theben SMGW"
 THEBEN_DEFAULT_MODEL = "Conexa 3.0"
 THEBEN_MANUFACTURER = "Theben Smart Energy GmbH"
-THEBEN_URL = "https://{{INSERT_IP}}/smgw/m2m/{{INSERT_ID}}.sm/json"
+THEBEN_URL = "https://REPLACE_WITH_IP/smgw/m2m/"
 
 CONF_METER_TYPE = "meter_type"
 
